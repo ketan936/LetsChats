@@ -16,44 +16,39 @@ import com.mstr.letschat.utils.FileUtils;
 import com.mstr.letschat.utils.NetworkUtils;
 import com.mstr.letschat.utils.PreferenceUtils;
 
-import org.jivesoftware.smack.AccountManager;
 import org.jivesoftware.smack.ConnectionConfiguration;
-import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
 import org.jivesoftware.smack.ConnectionListener;
-import org.jivesoftware.smack.PacketListener;
-import org.jivesoftware.smack.Roster;
-import org.jivesoftware.smack.Roster.SubscriptionMode;
-import org.jivesoftware.smack.RosterEntry;
-import org.jivesoftware.smack.RosterGroup;
-import org.jivesoftware.smack.SmackAndroid;
 import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
+import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.filter.MessageTypeFilter;
-import org.jivesoftware.smack.filter.PacketTypeFilter;
+import org.jivesoftware.smack.filter.StanzaTypeFilter;
+import org.jivesoftware.smack.packet.ExtensionElement;
 import org.jivesoftware.smack.packet.Message;
-import org.jivesoftware.smack.packet.PacketExtension;
 import org.jivesoftware.smack.packet.Presence;
-import org.jivesoftware.smack.packet.RosterPacket.ItemType;
 import org.jivesoftware.smack.provider.ProviderManager;
+import org.jivesoftware.smack.roster.Roster;
+import org.jivesoftware.smack.roster.RosterEntry;
+import org.jivesoftware.smack.roster.RosterGroup;
+import org.jivesoftware.smack.roster.packet.RosterPacket.ItemType;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
-import org.jivesoftware.smack.util.StringUtils;
+import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
 import org.jivesoftware.smackx.filetransfer.FileTransfer.Status;
 import org.jivesoftware.smackx.filetransfer.FileTransferListener;
 import org.jivesoftware.smackx.filetransfer.FileTransferManager;
 import org.jivesoftware.smackx.filetransfer.FileTransferRequest;
 import org.jivesoftware.smackx.filetransfer.IncomingFileTransfer;
 import org.jivesoftware.smackx.filetransfer.OutgoingFileTransfer;
+import org.jivesoftware.smackx.iqregister.AccountManager;
 import org.jivesoftware.smackx.offline.OfflineMessageManager;
 import org.jivesoftware.smackx.ping.PingFailedListener;
 import org.jivesoftware.smackx.ping.PingManager;
 import org.jivesoftware.smackx.vcardtemp.packet.VCard;
 
 import java.io.File;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -61,19 +56,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.X509TrustManager;
-
-import de.duenndns.ssl.MemorizingTrustManager;
-
 public class SmackHelper {
 	private static final String LOG_TAG = "SmackHelper";
+	private static final String SERVICE_NAME = "localhost";
 	
 	private static final int PORT = 5222;
 	
 	public static final String RESOURCE_PART = "Smack";
 
-	private XMPPConnection con;
+	private XMPPTCPConnection con;
 	
 	private ConnectionListener connectionListener;
 	
@@ -81,12 +72,11 @@ public class SmackHelper {
 	
 	private State state;
 	
-	private PacketListener messagePacketListener;
+	private StanzaListener messagePacketListener;
 	
-	private PacketListener presencePacketListener;
+	private StanzaListener presencePacketListener;
 	
-	private SmackAndroid smackAndroid;
-	
+
 	private static SmackHelper instance;
 	
 	private SmackContactHelper contactHelper;
@@ -105,13 +95,17 @@ public class SmackHelper {
 	private SmackHelper(Context context) {
 		this.context = context;
 		
-		smackAndroid = SmackAndroid.init(context);
-		
+//		smackAndroid = SmackAndroid.init(context);
+//		try {
+//			connect();
+//		} catch (SmackInvocationException e) {
+//			e.printStackTrace();
+//		}
 		messagePacketListener = new MessagePacketListener(context);
 		presencePacketListener = new PresencePacketListener(context);
 		
 		SmackConfiguration.setDefaultPacketReplyTimeout(20 * 1000);
-		Roster.setDefaultSubscriptionMode(SubscriptionMode.manual);
+		Roster.setDefaultSubscriptionMode(Roster.SubscriptionMode.manual);
 
 		ProviderManager.addExtensionProvider(UserLocation.ELEMENT_NAME, UserLocation.NAMESPACE, new LocationMessageProvider());
 	}
@@ -148,14 +142,14 @@ public class SmackHelper {
 		vCardHelper.save(nickname, avatar);
 	}
 	
-	public void sendChatMessage(String to, String body, PacketExtension packetExtension) throws SmackInvocationException {
+	public void sendChatMessage(String to, String body, ExtensionElement packetExtension) throws SmackInvocationException {
 		Message message = new Message(to, Message.Type.chat);
 		message.setBody(body);
 		if (packetExtension != null) {
 			message.addExtension(packetExtension);
 		}
 		try {
-			con.sendPacket(message);
+			con.sendStanza(message);
 		} catch (NotConnectedException e) {
 			throw new SmackInvocationException(e);
 		}
@@ -164,7 +158,7 @@ public class SmackHelper {
 	public List<RosterEntry> getRosterEntries() {
 		List<RosterEntry> result = new ArrayList<RosterEntry>();
 		
-		Roster roster = con.getRoster();
+		Roster roster = Roster.getInstanceFor(con);
 		Collection<RosterGroup> groups = roster.getGroups();
 		for (RosterGroup group : groups) {
 			result.addAll(group.getEntries());
@@ -174,12 +168,12 @@ public class SmackHelper {
 	}
 	
 	public UserProfile search(String username) throws SmackInvocationException {
-		String name = StringUtils.parseName(username);
+		String name = username;
 		String jid = null;
 		if (name == null || name.trim().length() == 0) {
 			jid = username + "@" + con.getServiceName();
 		} else {
-			jid = StringUtils.parseBareAddress(username);
+			jid = username;
 		}
 
 		if (vCardHelper == null) {
@@ -205,48 +199,55 @@ public class SmackHelper {
 			if (con == null) {
 				con = createConnection();
 			}
-			
+
 			try {
 				con.connect();
 			} catch(Exception e) {
 				Log.e(LOG_TAG, String.format("Unhandled exception %s", e.toString()), e);
 
 				startReconnectIfNecessary();
-				
+
 				throw new SmackInvocationException(e);
 			}
 		}
 	}
 	
 	@SuppressLint("TrulyRandom")
-	private XMPPConnection createConnection() {
-		ConnectionConfiguration config = new ConnectionConfiguration(PreferenceUtils.getServerHost(context), PORT);
-
-		SSLContext sc = null;
-		MemorizingTrustManager mtm = null;
-		try {
-			mtm = new MemorizingTrustManager(context);
-			sc = SSLContext.getInstance("TLS");
-			sc.init(null, new X509TrustManager[] { mtm }, new SecureRandom());
-		} catch (NoSuchAlgorithmException e) {
-			throw new IllegalStateException(e);
-		} catch (KeyManagementException e) {
-			throw new IllegalStateException(e);
-		}
+	private XMPPTCPConnection createConnection() {
+		XMPPTCPConnectionConfiguration.Builder config = XMPPTCPConnectionConfiguration
+				.builder();
+		config.setHost(PreferenceUtils.getServerHost(context));
+//		config.setUsernameAndPassword("admin@localhost","admin");
+		config.setPort(PORT);
+		config.setServiceName(SERVICE_NAME);
+		config.setDebuggerEnabled(true);
+		XMPPTCPConnection.setUseStreamManagementResumptiodDefault(true);
+		XMPPTCPConnection.setUseStreamManagementDefault(true);
+//		SSLContext sc = null;
+//		MemorizingTrustManager mtm = null;
+//		try {
+//			mtm = new MemorizingTrustManager(context);
+//			sc = SSLContext.getInstance("TLS");
+//			sc.init(null, new X509TrustManager[] { mtm }, new SecureRandom());
+//		} catch (NoSuchAlgorithmException e) {
+//			throw new IllegalStateException(e);
+//		} catch (KeyManagementException e) {
+//			throw new IllegalStateException(e);
+//		}
 			
-		config.setCustomSSLContext(sc);
-		config.setHostnameVerifier(mtm.wrapHostnameVerifier(new org.apache.http.conn.ssl.StrictHostnameVerifier()));
-		config.setSecurityMode(SecurityMode.required);
-		config.setReconnectionAllowed(false);
-		config.setSendPresence(false);
+//		config.setCustomSSLContext(sc);
+//		config.setHostnameVerifier(mtm.wrapHostnameVerifier(new org.apache.http.conn.ssl.StrictHostnameVerifier()));
+//		config.setSecurityMode(SecurityMode.required);
+		config.setSecurityMode(ConnectionConfiguration.SecurityMode.disabled);
+		config.setDebuggerEnabled(true);
 		
-		return new XMPPTCPConnection(config);
+		return new XMPPTCPConnection(config.build());
 	}
 	
 	public void cleanupConnection() {
 		if (con != null) {
-			con.removePacketListener(messagePacketListener);
-			con.removePacketListener(presencePacketListener);
+			con.removeAsyncStanzaListener(messagePacketListener);
+			con.removeAsyncStanzaListener(presencePacketListener);
 			
 			if (connectionListener != null) {
 				con.removeConnectionListener(connectionListener);
@@ -254,9 +255,7 @@ public class SmackHelper {
 		}
 		
 		if (isConnected()) {
-			try {
-				con.disconnect();
-			} catch (NotConnectedException e) {}
+			con.disconnect();
 		}
 	}
 	
@@ -270,7 +269,7 @@ public class SmackHelper {
 			
 			contactHelper = new SmackContactHelper(context, con);
 			vCardHelper = new SmackVCardHelper(context, con);
-			fileTransferManager = new FileTransferManager(con);
+			fileTransferManager = FileTransferManager.getInstanceFor(con);
 			OutgoingFileTransfer.setResponseTimeout(30000);
 			addFileTransferListener();
 
@@ -290,8 +289,8 @@ public class SmackHelper {
 				}
 			});
 
-			con.addPacketListener(messagePacketListener, new MessageTypeFilter(Message.Type.chat));
-			con.addPacketListener(presencePacketListener, new PacketTypeFilter(Presence.class));
+			con.addAsyncStanzaListener(messagePacketListener, MessageTypeFilter.CHAT);
+			con.addAsyncStanzaListener(presencePacketListener, StanzaTypeFilter.PRESENCE);
 			con.addConnectionListener(createConnectionListener());
 			
 			setState(State.CONNECTED);
@@ -351,7 +350,7 @@ public class SmackHelper {
 			List<Message> msgs = offlineMessageManager.getMessages();
 			for (Message msg : msgs) {
 				Intent intent = new Intent(MessageService.ACTION_MESSAGE_RECEIVED, null, context, MessageService.class);
-				intent.putExtra(MessageService.EXTRA_DATA_NAME_FROM, StringUtils.parseBareAddress(msg.getFrom()));
+				intent.putExtra(MessageService.EXTRA_DATA_NAME_FROM, msg.getFrom());
 				intent.putExtra(MessageService.EXTRA_DATA_NAME_MESSAGE_BODY, msg.getBody());
             	
             	context.startService(intent);
@@ -368,7 +367,7 @@ public class SmackHelper {
 	private ConnectionListener createConnectionListener() {
 		connectionListener = new ConnectionListener() {
 			@Override
-			public void authenticated(XMPPConnection arg0) {}
+			public void authenticated(XMPPConnection arg0, boolean arg1) {}
 
 			@Override
 			public void connected(XMPPConnection arg0) {}
@@ -526,7 +525,7 @@ public class SmackHelper {
 						File file = new File(FileUtils.getReceivedImagesDir(context), fileName + FileUtils.IMAGE_EXTENSION);
 						try {
 							transfer.recieveFile(file);
-						} catch (SmackException e) {
+						} catch (SmackException  | IOException e) {
 							Log.e(LOG_TAG, "receive file error", e);
 							return;
 						}
@@ -542,7 +541,7 @@ public class SmackHelper {
 						// start service to save the image to sqlite
 						if (transfer.getStatus().equals(Status.complete)) {
 							Intent intent = new Intent(MessageService.ACTION_MESSAGE_RECEIVED, null, context, MessageService.class);
-							intent.putExtra(MessageService.EXTRA_DATA_NAME_FROM, StringUtils.parseBareAddress(request.getRequestor()));
+							intent.putExtra(MessageService.EXTRA_DATA_NAME_FROM, request.getRequestor());
 							intent.putExtra(MessageService.EXTRA_DATA_NAME_MESSAGE_BODY, context.getString(R.string.image_message_body));
 							intent.putExtra(MessageService.EXTRA_DATA_NAME_FILE_PATH, file.getAbsolutePath());
 							intent.putExtra(MessageService.EXTRA_DATA_NAME_TYPE, ChatMessageTableHelper.TYPE_INCOMING_IMAGE);
@@ -559,7 +558,7 @@ public class SmackHelper {
 	public void onDestroy() {
 		cleanupConnection();
 		
-		smackAndroid.onDestroy();
+//		smackAndroid.onDestroy();
 	}
 	
 	public static enum State {

@@ -9,12 +9,13 @@ import com.google.android.gms.maps.model.LatLng;
 import com.mstr.letschat.databases.ChatContract;
 import com.mstr.letschat.databases.ChatMessageTableHelper;
 
+import org.jivesoftware.smack.packet.ExtensionElement;
 import org.jivesoftware.smack.packet.PacketExtension;
 
 /**
  * Created by dilli on 11/11/2015.
  */
-public class UserLocation implements PacketExtension, Parcelable {
+public class UserLocation implements ExtensionElement, Parcelable {
     public static final String NAMESPACE = "jabber:client";
     public static final String ELEMENT_NAME = "location";
 

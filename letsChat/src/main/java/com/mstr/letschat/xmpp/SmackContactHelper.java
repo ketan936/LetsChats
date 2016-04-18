@@ -1,10 +1,10 @@
 package com.mstr.letschat.xmpp;
 
-import org.jivesoftware.smack.Roster;
-import org.jivesoftware.smack.RosterEntry;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.roster.Roster;
+import org.jivesoftware.smack.roster.RosterEntry;
 
 import android.content.Context;
 
@@ -21,7 +21,7 @@ public class SmackContactHelper {
 	
 	private Roster getRoster() {
 		if (roster == null) {
-			roster = con.getRoster();
+			roster = Roster.getInstanceFor(con);
 		}
 		
 		return roster;

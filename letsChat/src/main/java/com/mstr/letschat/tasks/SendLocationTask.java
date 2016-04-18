@@ -8,6 +8,7 @@ import com.mstr.letschat.databases.ChatMessageTableHelper;
 import com.mstr.letschat.xmpp.SmackHelper;
 import com.mstr.letschat.xmpp.UserLocation;
 
+import org.jivesoftware.smack.packet.ExtensionElement;
 import org.jivesoftware.smack.packet.PacketExtension;
 
 /**
@@ -15,7 +16,7 @@ import org.jivesoftware.smack.packet.PacketExtension;
  */
 public class SendLocationTask extends SendMessageTask {
     private UserLocation location;
-    protected PacketExtension packetExtension;
+    protected ExtensionElement packetExtension;
 
     public SendLocationTask(Response.Listener<Boolean> listener, Context context, String to, String nickname, UserLocation location) {
         super(listener, context, to, nickname, location.getName());

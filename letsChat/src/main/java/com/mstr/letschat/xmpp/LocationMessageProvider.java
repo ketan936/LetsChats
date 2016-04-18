@@ -1,15 +1,20 @@
 package com.mstr.letschat.xmpp;
 
-import org.jivesoftware.smack.packet.PacketExtension;
-import org.jivesoftware.smack.provider.PacketExtensionProvider;
+import org.jivesoftware.smack.packet.ExtensionElement;
+import org.jivesoftware.smack.provider.ExtensionElementProvider;
 import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+
+import java.io.IOException;
 
 /**
  * Created by dilli on 11/27/2015.
  */
-public class LocationMessageProvider implements PacketExtensionProvider {
+public class LocationMessageProvider extends ExtensionElementProvider<UserLocation> {
     @Override
-    public PacketExtension parseExtension(org.xmlpull.v1.XmlPullParser parser) throws java.lang.Exception {
+    public UserLocation parse(XmlPullParser parser,
+                                  int initialDepth) throws XmlPullParserException,
+            IOException {
         UserLocation location = new UserLocation();
 
         boolean done = false;
@@ -25,14 +30,16 @@ public class LocationMessageProvider implements PacketExtensionProvider {
                     if (UserLocation.TAG_NAME_LATITUDE.equals(tag)) {
                         try {
                             location.setLatitude(Double.parseDouble(parser.getText()));
-                        } catch (NumberFormatException ex) {}
+                        } catch (NumberFormatException ex) {
+                        }
                     } else if (UserLocation.TAG_NAME_LONGITUDE.equals(tag)) {
                         try {
                             location.setLongitude(Double.parseDouble(parser.getText()));
-                        } catch (NumberFormatException ex) {}
+                        } catch (NumberFormatException ex) {
+                        }
                     } else if (UserLocation.TAG_NAME_NAME.equals(tag)) {
                         location.setName(parser.getText());
-                    } else if(UserLocation.TAG_NAME_ADDRESS.equals(tag)) {
+                    } else if (UserLocation.TAG_NAME_ADDRESS.equals(tag)) {
                         location.setAddress(parser.getText());
                     }
                     break;

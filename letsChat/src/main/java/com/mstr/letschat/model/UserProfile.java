@@ -48,7 +48,7 @@ public class UserProfile implements Parcelable {
 	}
 
 	public String getUserName() {
-		return StringUtils.parseName(jid);
+		return jid;
 	}
 
 	public String getNickname() {

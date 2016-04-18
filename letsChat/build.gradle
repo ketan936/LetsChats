@@ -21,7 +21,15 @@ android {
 dependencies {
     compile project(':library:memorizingTrustManager')
     compile project(':library:cropImage')
-    compile files('libs/asmack-android-8-4.0.6.jar')
+    //smack
+    //compile 'org.igniterealtime.smack:smack-java7:4.1.0'
+    // Optional for XMPPTCPConnection
+    // Optional for XMPP-IM (RFC 6121) support (Roster, Threaded Chats, …)
+    compile 'org.igniterealtime.smack:smack-android:4.1.0'
+
+    compile 'org.igniterealtime.smack:smack-tcp:4.1.0'
+    // Optional for XMPP extensions support
+    compile 'org.igniterealtime.smack:smack-extensions:4.1.0'
     compile files('libs/dnsjava-2.1.6.jar')
     compile 'com.google.android.gms:play-services-maps:8.3.0'
     compile 'com.google.android.gms:play-services-location:8.3.0'
