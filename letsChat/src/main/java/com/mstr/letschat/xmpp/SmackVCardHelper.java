@@ -1,6 +1,7 @@
 package com.mstr.letschat.xmpp;
 
 import org.jivesoftware.smack.XMPPConnection;
+import org.jivesoftware.smackx.vcardtemp.VCardManager;
 import org.jivesoftware.smackx.vcardtemp.packet.VCard;
 
 import android.content.Context;
@@ -49,10 +50,11 @@ public class SmackVCardHelper {
 	}
 	
 	public VCard loadVCard(String jid) throws SmackInvocationException {
-		VCard vCard = new VCard();
+		VCardManager vcardManager = VCardManager.getInstanceFor(con);
 		try {
-			vCard.load(con, jid);
-			
+			jid = jid.split("/")[0];
+			VCard vCard = vcardManager.loadVCard(jid);
+
 			return vCard;
 		} catch (Exception e) {
 			throw new SmackInvocationException(e);
@@ -60,9 +62,9 @@ public class SmackVCardHelper {
 	}
 	
 	public VCard loadVCard() throws SmackInvocationException {
-		VCard vCard = new VCard();
+		VCardManager vcardManager = VCardManager.getInstanceFor(con);
 		try {
-			vCard.load(con);
+			VCard vCard = vcardManager.loadVCard();
 			return vCard;
 		} catch (Exception e) {
 			throw new SmackInvocationException(e);

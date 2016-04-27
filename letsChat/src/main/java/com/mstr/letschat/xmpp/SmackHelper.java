@@ -171,9 +171,10 @@ public class SmackHelper {
 		String name = username;
 		String jid = null;
 		if (name == null || name.trim().length() == 0) {
-			jid = username + "@" + con.getServiceName();
+			jid = username;
 		} else {
 			jid = username;
+
 		}
 
 		if (vCardHelper == null) {
